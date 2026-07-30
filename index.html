@@ -1,0 +1,1360 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#f7c94b" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="러쉬팜 타이머" />
+  <title>러쉬팜 타이머</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #fff9e8;
+      --surface: rgba(255, 255, 255, 0.94);
+      --surface-solid: #ffffff;
+      --surface-soft: #fff4c9;
+      --text: #20231d;
+      --muted: #73776e;
+      --line: rgba(56, 65, 44, 0.12);
+      --primary: #238b57;
+      --primary-dark: #166b41;
+      --primary-soft: #dff4e8;
+      --yellow: #f7c94b;
+      --yellow-dark: #b77800;
+      --danger: #d94848;
+      --danger-soft: #fff0ef;
+      --blue: #2879c9;
+      --blue-soft: #e8f3ff;
+      --shadow: 0 14px 36px rgba(71, 61, 20, 0.12);
+      --radius-xl: 26px;
+      --radius-lg: 20px;
+      --radius-md: 15px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-right: env(safe-area-inset-right, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-left: env(safe-area-inset-left, 0px);
+    }
+
+    * { box-sizing: border-box; }
+    html { min-height: 100%; background: var(--bg); }
+    body {
+      min-height: 100%;
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 12% 2%, rgba(247, 201, 75, 0.34), transparent 28%),
+        radial-gradient(circle at 95% 18%, rgba(75, 170, 112, 0.18), transparent 25%),
+        linear-gradient(180deg, #fff8df 0%, #fffdf7 42%, #f3f7ef 100%);
+      -webkit-tap-highlight-color: transparent;
+      overscroll-behavior-y: none;
+    }
+
+    button, input, textarea, select { font: inherit; }
+    button { border: 0; cursor: pointer; }
+    button:disabled { cursor: not-allowed; opacity: 0.5; }
+    input, textarea { color: var(--text); }
+
+    .app {
+      width: min(100%, 560px);
+      min-height: 100dvh;
+      margin: 0 auto;
+      padding:
+        calc(14px + var(--safe-top))
+        calc(16px + var(--safe-right))
+        calc(110px + var(--safe-bottom))
+        calc(16px + var(--safe-left));
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    .brand { min-width: 0; }
+    .brand-row { display: flex; align-items: center; gap: 9px; }
+    .brand-icon {
+      display: grid;
+      place-items: center;
+      width: 42px;
+      height: 42px;
+      border-radius: 15px;
+      background: linear-gradient(145deg, #ffe888, #f2b72d);
+      box-shadow: 0 8px 18px rgba(186, 125, 0, 0.22);
+      font-size: 23px;
+    }
+    h1 { margin: 0; font-size: 23px; line-height: 1.1; letter-spacing: -0.04em; }
+    .subtitle { margin: 5px 0 0; color: var(--muted); font-size: 13px; }
+
+    .icon-button {
+      width: 43px;
+      height: 43px;
+      flex: 0 0 43px;
+      display: grid;
+      place-items: center;
+      border-radius: 15px;
+      color: var(--text);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 8px 22px rgba(83, 70, 22, 0.10);
+      border: 1px solid rgba(255,255,255,.8);
+      font-size: 20px;
+    }
+    .icon-button:active { transform: scale(0.96); }
+
+    .summary {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .summary-card {
+      min-width: 0;
+      padding: 15px;
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,.9);
+      box-shadow: 0 10px 25px rgba(82, 67, 18, 0.08);
+    }
+    .summary-label { color: var(--muted); font-size: 12px; }
+    .summary-value { margin-top: 3px; font-size: 23px; font-weight: 850; letter-spacing: -0.04em; }
+    .summary-value small { font-size: 12px; font-weight: 700; color: var(--muted); margin-left: 3px; }
+
+    .info-strip {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      padding: 11px 13px;
+      margin-bottom: 14px;
+      border-radius: 15px;
+      background: rgba(255, 246, 207, 0.82);
+      color: #795913;
+      font-size: 12px;
+      line-height: 1.45;
+      border: 1px solid rgba(211, 164, 38, 0.18);
+    }
+
+    .list { display: grid; gap: 13px; }
+
+    .empty {
+      padding: 48px 20px;
+      text-align: center;
+      border-radius: var(--radius-xl);
+      background: rgba(255,255,255,.72);
+      border: 1px dashed rgba(62, 95, 54, 0.23);
+    }
+    .empty-icon { font-size: 45px; }
+    .empty strong { display: block; margin-top: 9px; font-size: 18px; }
+    .empty p { margin: 7px 0 0; color: var(--muted); font-size: 13px; line-height: 1.6; }
+
+    .timer-card {
+      position: relative;
+      overflow: hidden;
+      padding: 16px;
+      border-radius: var(--radius-xl);
+      background: var(--surface);
+      border: 1px solid rgba(255,255,255,.95);
+      box-shadow: var(--shadow);
+      transition: transform .16s ease, box-shadow .16s ease;
+    }
+    .timer-card:active { transform: scale(.995); }
+    .timer-card.ready {
+      border-color: rgba(35, 139, 87, 0.38);
+      box-shadow: 0 15px 38px rgba(35, 139, 87, 0.18);
+    }
+    .timer-card::before {
+      content: "";
+      position: absolute;
+      inset: 0 auto 0 0;
+      width: 5px;
+      background: var(--card-accent, var(--primary));
+    }
+
+    .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .card-title-wrap { min-width: 0; }
+    .type-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 9px;
+      border-radius: 999px;
+      color: var(--primary-dark);
+      background: var(--primary-soft);
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .type-badge.ranch { color: #805a0b; background: #fff0c7; }
+    .memo {
+      margin: 8px 0 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 18px;
+      font-weight: 850;
+      letter-spacing: -0.035em;
+    }
+    .memo.placeholder { color: #9a9d95; font-weight: 700; }
+    .more-button {
+      width: 38px;
+      height: 38px;
+      display: grid;
+      place-items: center;
+      border-radius: 13px;
+      background: #f5f6f2;
+      color: #555b50;
+      font-size: 21px;
+      line-height: 1;
+    }
+
+    .countdown {
+      margin-top: 17px;
+      font-variant-numeric: tabular-nums;
+      font-size: clamp(34px, 10vw, 47px);
+      font-weight: 900;
+      line-height: 1;
+      letter-spacing: -0.055em;
+    }
+    .countdown.ready-text { color: var(--primary); font-size: 39px; }
+    .end-time { margin-top: 7px; color: var(--muted); font-size: 13px; }
+
+    .progress-track {
+      height: 8px;
+      margin-top: 14px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #e8ece5;
+    }
+    .progress-bar {
+      height: 100%;
+      width: 0;
+      border-radius: inherit;
+      background: linear-gradient(90deg, var(--primary), #74c67d);
+      transition: width .8s linear;
+    }
+
+    .booster-panel {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 10px;
+      margin-top: 14px;
+      padding: 11px 12px;
+      border-radius: 16px;
+      background: var(--blue-soft);
+    }
+    .booster-label { color: #36688f; font-size: 11px; font-weight: 700; }
+    .booster-value { margin-top: 3px; color: #174c77; font-weight: 850; font-variant-numeric: tabular-nums; }
+    .boost-button {
+      min-width: 94px;
+      padding: 10px 12px;
+      border-radius: 13px;
+      color: #fff;
+      background: var(--blue);
+      font-size: 13px;
+      font-weight: 850;
+      box-shadow: 0 6px 14px rgba(40,121,201,.2);
+    }
+    .boost-button:active { transform: scale(.97); }
+
+    .card-actions { display: grid; grid-template-columns: 1fr; gap: 9px; margin-top: 11px; }
+    .complete-button {
+      padding: 12px 14px;
+      border-radius: 15px;
+      color: #fff;
+      background: var(--primary);
+      font-weight: 850;
+      box-shadow: 0 8px 18px rgba(35,139,87,.2);
+    }
+    .complete-button.ready { background: linear-gradient(135deg, #199356, #44b85c); }
+
+    .fab {
+      position: fixed;
+      z-index: 20;
+      right: max(20px, calc((100vw - 560px) / 2 + 20px));
+      bottom: calc(20px + var(--safe-bottom));
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      height: 58px;
+      padding: 0 19px;
+      border-radius: 20px;
+      color: #fff;
+      background: linear-gradient(135deg, var(--primary), #38a865);
+      box-shadow: 0 14px 32px rgba(27, 115, 69, 0.32);
+      font-weight: 850;
+      font-size: 15px;
+    }
+    .fab-plus { font-size: 25px; line-height: 1; font-weight: 500; }
+    .fab:active { transform: translateY(1px) scale(.98); }
+
+    .overlay {
+      position: fixed;
+      z-index: 100;
+      inset: 0;
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 18px max(12px, var(--safe-right)) calc(12px + var(--safe-bottom)) max(12px, var(--safe-left));
+      background: rgba(24, 27, 22, 0.45);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+    }
+    .overlay.open { display: flex; }
+    .sheet {
+      width: min(100%, 540px);
+      max-height: min(90dvh, 850px);
+      overflow: auto;
+      padding: 9px 17px 18px;
+      border-radius: 29px;
+      background: var(--surface-solid);
+      box-shadow: 0 24px 70px rgba(0,0,0,.25);
+      animation: sheetUp .2s ease-out;
+    }
+    @keyframes sheetUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+    .grabber { width: 42px; height: 5px; margin: 2px auto 13px; border-radius: 999px; background: #d9ddd5; }
+    .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .sheet-title { margin: 0; font-size: 21px; letter-spacing: -0.035em; }
+    .close-button { width: 38px; height: 38px; border-radius: 13px; background: #f2f3ef; font-size: 20px; }
+
+    .field { margin-top: 17px; }
+    .field-label { display: block; margin-bottom: 8px; color: #555b50; font-size: 13px; font-weight: 800; }
+    .field-hint { margin-top: 7px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+    .text-input, .number-input, .datetime-input {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 13px;
+      border: 1px solid #dfe3dc;
+      border-radius: 14px;
+      outline: none;
+      background: #fbfcfa;
+      font-size: 15px;
+    }
+    .text-input:focus, .number-input:focus, .datetime-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(35,139,87,.10); }
+
+    .segment { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 5px; border-radius: 16px; background: #eef1eb; }
+    .segment button { min-height: 43px; border-radius: 12px; background: transparent; color: #6b7067; font-weight: 800; }
+    .segment button.active { color: #fff; background: var(--primary); box-shadow: 0 5px 13px rgba(35,139,87,.19); }
+    .segment button[data-type="ranch"].active { background: #c58b18; box-shadow: 0 5px 13px rgba(197,139,24,.19); }
+
+    .quick-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+    .quick-time { min-height: 46px; border-radius: 14px; background: #f1f3ee; color: #4d5349; font-weight: 850; }
+    .quick-time.active { color: #fff; background: var(--primary); }
+    .time-inputs { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; margin-top: 9px; }
+    .input-with-unit { position: relative; }
+    .input-with-unit input { padding-right: 40px; }
+    .input-unit { position: absolute; top: 50%; right: 13px; transform: translateY(-50%); color: var(--muted); font-size: 13px; }
+
+    .toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px;
+      border-radius: 15px;
+      background: #f7f8f5;
+    }
+    .toggle-text strong { display: block; font-size: 14px; }
+    .toggle-text span { display: block; margin-top: 3px; color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .switch { position: relative; width: 52px; height: 31px; flex: 0 0 52px; }
+    .switch input { position: absolute; opacity: 0; }
+    .switch-track { position: absolute; inset: 0; border-radius: 999px; background: #cbd0c7; transition: .2s; }
+    .switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 25px; height: 25px; border-radius: 50%; background: #fff; box-shadow: 0 2px 7px rgba(0,0,0,.18); transition: .2s; }
+    .switch input:checked + .switch-track { background: var(--primary); }
+    .switch input:checked + .switch-track::after { transform: translateX(21px); }
+
+    .calibration-banner {
+      display: none;
+      margin-top: 11px;
+      padding: 11px 12px;
+      border-radius: 14px;
+      color: #6e5216;
+      background: #fff5d4;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .calibration-banner.show { display: block; }
+
+    .sheet-actions { display: grid; grid-template-columns: 1fr 1.45fr; gap: 9px; margin-top: 20px; }
+    .secondary-button, .primary-button, .danger-button {
+      min-height: 49px;
+      padding: 11px 13px;
+      border-radius: 15px;
+      font-weight: 850;
+    }
+    .secondary-button { color: #444a41; background: #eef0ec; }
+    .primary-button { color: #fff; background: var(--primary); box-shadow: 0 8px 17px rgba(35,139,87,.20); }
+    .danger-button { color: var(--danger); background: var(--danger-soft); }
+
+    .correction-box {
+      margin-top: 13px;
+      padding: 14px;
+      border-radius: 17px;
+      background: #f6f8f4;
+      border: 1px solid var(--line);
+    }
+    .correction-result { font-size: 16px; font-weight: 900; }
+    .correction-result.plus { color: #a56500; }
+    .correction-result.minus { color: var(--blue); }
+    .correction-detail { margin-top: 5px; color: var(--muted); font-size: 12px; line-height: 1.55; }
+
+    .menu-list { display: grid; gap: 8px; margin-top: 15px; }
+    .menu-item {
+      display: flex;
+      align-items: center;
+      gap: 11px;
+      width: 100%;
+      min-height: 51px;
+      padding: 10px 13px;
+      border-radius: 15px;
+      text-align: left;
+      color: var(--text);
+      background: #f6f7f4;
+      font-weight: 780;
+    }
+    .menu-item.danger { color: var(--danger); background: var(--danger-soft); }
+    .menu-icon { width: 28px; text-align: center; font-size: 19px; }
+
+    .adjust-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+    .adjust-button { min-height: 45px; border-radius: 13px; background: #eef2ec; font-weight: 850; }
+    .adjust-button.minus { color: var(--blue); background: var(--blue-soft); }
+    .adjust-button.plus { color: #a56600; background: #fff2cd; }
+
+    .settings-section { margin-top: 17px; }
+    .settings-section h3 { margin: 0 0 9px; font-size: 14px; }
+    .calibration-list { display: grid; gap: 9px; }
+    .calibration-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px; border-radius: 15px; background: #f6f8f4; }
+    .calibration-name { font-weight: 850; font-size: 13px; }
+    .calibration-meta { margin-top: 3px; color: var(--muted); font-size: 11px; }
+    .tiny-button { padding: 7px 9px; border-radius: 10px; color: var(--danger); background: var(--danger-soft); font-size: 11px; font-weight: 800; }
+
+    .toast {
+      position: fixed;
+      z-index: 300;
+      left: 50%;
+      bottom: calc(90px + var(--safe-bottom));
+      transform: translate(-50%, 15px);
+      width: max-content;
+      max-width: calc(100vw - 36px);
+      padding: 11px 15px;
+      border-radius: 14px;
+      color: #fff;
+      background: rgba(30, 34, 28, 0.92);
+      box-shadow: 0 10px 30px rgba(0,0,0,.22);
+      font-size: 13px;
+      opacity: 0;
+      pointer-events: none;
+      transition: .2s;
+    }
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (min-width: 700px) {
+      .app { padding-top: 28px; }
+      .overlay { align-items: center; }
+      .sheet { border-radius: 30px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-row">
+          <div class="brand-icon" aria-hidden="true">🌾</div>
+          <div>
+            <h1>러쉬팜 타이머</h1>
+            <p class="subtitle">농장 · 목장 수확시간 관리</p>
+          </div>
+        </div>
+      </div>
+      <button class="icon-button" id="settingsBtn" aria-label="설정 열기">⚙️</button>
+    </header>
+
+    <section class="summary" aria-label="타이머 요약">
+      <article class="summary-card">
+        <div class="summary-label">진행 중</div>
+        <div class="summary-value"><span id="activeCount">0</span><small>개</small></div>
+      </article>
+      <article class="summary-card">
+        <div class="summary-label">수확 가능</div>
+        <div class="summary-value"><span id="readyCount">0</span><small>개</small></div>
+      </article>
+    </section>
+
+    <div class="info-strip">
+      <span aria-hidden="true">💧</span>
+      <span>물주기·사료주기는 실제 4분마다 1분씩 충전되며, 사용한 만큼 수확시간이 단축됩니다.</span>
+    </div>
+
+    <section class="list" id="timerList" aria-live="polite"></section>
+  </main>
+
+  <button class="fab" id="addBtn" aria-label="새 타이머 등록">
+    <span class="fab-plus">＋</span><span>타이머 등록</span>
+  </button>
+
+  <div class="overlay" id="addOverlay" role="dialog" aria-modal="true" aria-labelledby="addTitle">
+    <section class="sheet">
+      <div class="grabber"></div>
+      <div class="sheet-head">
+        <h2 class="sheet-title" id="addTitle">새 타이머</h2>
+        <button class="close-button" data-close="addOverlay" aria-label="닫기">×</button>
+      </div>
+
+      <div class="field">
+        <label class="field-label">구분</label>
+        <div class="segment" id="typeSegment">
+          <button type="button" class="active" data-type="farm">🌾 농장</button>
+          <button type="button" data-type="ranch">🐮 목장</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="field-label" for="memoInput">메모</label>
+        <input class="text-input" id="memoInput" type="text" maxlength="40" placeholder="예: 1번 밭, 우유 목장" autocomplete="off" />
+      </div>
+
+      <div class="field">
+        <label class="field-label">수확시간</label>
+        <div class="quick-grid" id="quickGrid">
+          <button type="button" class="quick-time" data-hours="6">6시간</button>
+          <button type="button" class="quick-time" data-hours="12">12시간</button>
+          <button type="button" class="quick-time" data-hours="16">16시간</button>
+          <button type="button" class="quick-time" data-hours="32">32시간</button>
+        </div>
+        <div class="time-inputs">
+          <div class="input-with-unit">
+            <input class="number-input" id="hoursInput" type="number" inputmode="numeric" min="0" max="999" value="6" />
+            <span class="input-unit">시간</span>
+          </div>
+          <div class="input-with-unit">
+            <input class="number-input" id="minutesInput" type="number" inputmode="numeric" min="0" max="59" value="0" />
+            <span class="input-unit">분</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <strong id="initialActionTitle">등록 직전에 물을 줬어요</strong>
+            <span>체크하면 첫 물주기·사료주기 단축시간을 바로 반영합니다.</span>
+          </div>
+          <label class="switch">
+            <input id="initialBoostToggle" type="checkbox" checked />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="calibration-banner" id="calibrationBanner"></div>
+
+      <div class="sheet-actions">
+        <button class="secondary-button" data-close="addOverlay">취소</button>
+        <button class="primary-button" id="saveTimerBtn">등록하기</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="completeOverlay" role="dialog" aria-modal="true" aria-labelledby="completeTitle">
+    <section class="sheet">
+      <div class="grabber"></div>
+      <div class="sheet-head">
+        <h2 class="sheet-title" id="completeTitle">수확 완료</h2>
+        <button class="close-button" data-close="completeOverlay" aria-label="닫기">×</button>
+      </div>
+
+      <p class="field-hint" id="completeMemo" style="font-size:13px; margin-top:12px;"></p>
+
+      <div class="field">
+        <label class="field-label" for="actualHarvestInput">인게임에서 실제 수확 가능해진 시각</label>
+        <input class="datetime-input" id="actualHarvestInput" type="datetime-local" step="1" />
+        <p class="field-hint">지금 막 수확했다면 현재 시각 그대로 두면 됩니다. 늦게 확인했다면 실제 수확 가능 시각으로 바꿔주세요.</p>
+      </div>
+
+      <div class="correction-box">
+        <div class="correction-result" id="correctionResult">오차 계산 중</div>
+        <div class="correction-detail" id="correctionDetail"></div>
+      </div>
+
+      <div class="field">
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <strong>다음 같은 타이머에 오차 반영</strong>
+            <span>같은 구분·같은 기본시간의 최근 오차를 최대 5회 평균냅니다.</span>
+          </div>
+          <label class="switch">
+            <input id="saveCorrectionToggle" type="checkbox" checked />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="field">
+        <div class="toggle-row">
+          <div class="toggle-text">
+            <strong>같은 시간으로 바로 재등록</strong>
+            <span>종류·메모·기본시간을 유지하고 새 타이머를 시작합니다.</span>
+          </div>
+          <label class="switch">
+            <input id="restartToggle" type="checkbox" checked />
+            <span class="switch-track"></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="sheet-actions">
+        <button class="secondary-button" id="finishWithoutCorrectionBtn">오차 저장 안 함</button>
+        <button class="primary-button" id="finishTimerBtn">완료 처리</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="menuOverlay" role="dialog" aria-modal="true" aria-labelledby="menuTitle">
+    <section class="sheet">
+      <div class="grabber"></div>
+      <div class="sheet-head">
+        <h2 class="sheet-title" id="menuTitle">타이머 관리</h2>
+        <button class="close-button" data-close="menuOverlay" aria-label="닫기">×</button>
+      </div>
+      <div class="menu-list">
+        <button class="menu-item" id="adjustBtn"><span class="menu-icon">⏱️</span>남은 시간 직접 조정</button>
+        <button class="menu-item" id="editBtn"><span class="menu-icon">✏️</span>메모·기본시간 수정</button>
+        <button class="menu-item danger" id="deleteBtn"><span class="menu-icon">🗑️</span>타이머 삭제</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="adjustOverlay" role="dialog" aria-modal="true" aria-labelledby="adjustTitle">
+    <section class="sheet">
+      <div class="grabber"></div>
+      <div class="sheet-head">
+        <h2 class="sheet-title" id="adjustTitle">남은 시간 조정</h2>
+        <button class="close-button" data-close="adjustOverlay" aria-label="닫기">×</button>
+      </div>
+      <p class="field-hint" style="font-size:13px;">현재 타이머에만 적용됩니다. 인게임과 비교해 빠르거나 느릴 때 즉시 맞출 수 있습니다.</p>
+      <div class="adjust-grid">
+        <button class="adjust-button minus" data-adjust="-10">-10분</button>
+        <button class="adjust-button minus" data-adjust="-1">-1분</button>
+        <button class="adjust-button plus" data-adjust="1">+1분</button>
+        <button class="adjust-button plus" data-adjust="10">+10분</button>
+      </div>
+      <div class="field">
+        <label class="field-label" for="customAdjustInput">직접 입력</label>
+        <div class="input-with-unit">
+          <input class="number-input" id="customAdjustInput" type="number" inputmode="numeric" placeholder="예: -3 또는 5" />
+          <span class="input-unit">분</span>
+        </div>
+      </div>
+      <div class="sheet-actions">
+        <button class="secondary-button" data-close="adjustOverlay">취소</button>
+        <button class="primary-button" id="applyCustomAdjustBtn">적용</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="overlay" id="settingsOverlay" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+    <section class="sheet">
+      <div class="grabber"></div>
+      <div class="sheet-head">
+        <h2 class="sheet-title" id="settingsTitle">설정</h2>
+        <button class="close-button" data-close="settingsOverlay" aria-label="닫기">×</button>
+      </div>
+
+      <div class="settings-section">
+        <h3>완료 오차 보정값</h3>
+        <div class="calibration-list" id="calibrationList"></div>
+      </div>
+
+      <div class="settings-section">
+        <h3>데이터</h3>
+        <button class="menu-item danger" id="clearAllBtn"><span class="menu-icon">⚠️</span>모든 타이머와 보정값 초기화</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script>
+    (() => {
+      'use strict';
+
+      const STORAGE_KEY = 'rushfarmTimerStandaloneV1';
+      const MAX_CALIBRATION_SAMPLES = 5;
+      const QUICK_HOURS = [6, 12, 16, 32];
+
+      const $ = (selector, root = document) => root.querySelector(selector);
+      const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
+
+      const elements = {
+        timerList: $('#timerList'),
+        activeCount: $('#activeCount'),
+        readyCount: $('#readyCount'),
+        addBtn: $('#addBtn'),
+        settingsBtn: $('#settingsBtn'),
+        typeSegment: $('#typeSegment'),
+        memoInput: $('#memoInput'),
+        hoursInput: $('#hoursInput'),
+        minutesInput: $('#minutesInput'),
+        initialBoostToggle: $('#initialBoostToggle'),
+        initialActionTitle: $('#initialActionTitle'),
+        calibrationBanner: $('#calibrationBanner'),
+        saveTimerBtn: $('#saveTimerBtn'),
+        actualHarvestInput: $('#actualHarvestInput'),
+        correctionResult: $('#correctionResult'),
+        correctionDetail: $('#correctionDetail'),
+        saveCorrectionToggle: $('#saveCorrectionToggle'),
+        restartToggle: $('#restartToggle'),
+        finishTimerBtn: $('#finishTimerBtn'),
+        finishWithoutCorrectionBtn: $('#finishWithoutCorrectionBtn'),
+        completeMemo: $('#completeMemo'),
+        menuTitle: $('#menuTitle'),
+        adjustBtn: $('#adjustBtn'),
+        editBtn: $('#editBtn'),
+        deleteBtn: $('#deleteBtn'),
+        customAdjustInput: $('#customAdjustInput'),
+        applyCustomAdjustBtn: $('#applyCustomAdjustBtn'),
+        calibrationList: $('#calibrationList'),
+        clearAllBtn: $('#clearAllBtn'),
+        toast: $('#toast')
+      };
+
+      let state = loadState();
+      let selectedType = 'farm';
+      let editingCardId = null;
+      let activeCardId = null;
+      let completingCardId = null;
+      let toastTimer = null;
+      let lastReadyIds = new Set();
+
+      function defaultState() {
+        return {
+          cards: [],
+          calibrations: {},
+          version: 1
+        };
+      }
+
+      function loadState() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (!raw) return defaultState();
+          const parsed = JSON.parse(raw);
+          return {
+            ...defaultState(),
+            ...parsed,
+            cards: Array.isArray(parsed.cards) ? parsed.cards : [],
+            calibrations: parsed.calibrations && typeof parsed.calibrations === 'object' ? parsed.calibrations : {}
+          };
+        } catch (error) {
+          console.warn('저장 데이터를 읽지 못했습니다.', error);
+          return defaultState();
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      }
+
+      function makeId() {
+        return (crypto && typeof crypto.randomUUID === 'function')
+          ? crypto.randomUUID()
+          : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      }
+
+      function calibrationKey(type, baseMinutes) {
+        return `${type}:${Math.round(baseMinutes)}`;
+      }
+
+      function getCalibration(type, baseMinutes) {
+        const item = state.calibrations[calibrationKey(type, baseMinutes)];
+        if (!item || !Array.isArray(item.samples) || item.samples.length === 0) return 0;
+        const samples = item.samples.slice(-MAX_CALIBRATION_SAMPLES);
+        return samples.reduce((sum, value) => sum + Number(value || 0), 0) / samples.length;
+      }
+
+      function saveCalibrationSample(type, baseMinutes, offsetMinutes) {
+        if (!Number.isFinite(offsetMinutes)) return;
+        const key = calibrationKey(type, baseMinutes);
+        const previous = state.calibrations[key] || { type, baseMinutes, samples: [] };
+        const samples = [...(previous.samples || []), offsetMinutes].slice(-MAX_CALIBRATION_SAMPLES);
+        state.calibrations[key] = { type, baseMinutes, samples, updatedAt: Date.now() };
+      }
+
+      function currentSnapshot(card, at = Date.now()) {
+        const elapsedMinutes = Math.max(0, (at - card.anchorAt) / 60000);
+        const rawRemainingMinutes = card.remainingAtAnchor - elapsedMinutes;
+        const remainingMinutes = Math.max(0, rawRemainingMinutes);
+        const boosterMinutes = Math.min(card.maxBooster, Math.max(0, card.boosterAtAnchor + elapsedMinutes / 4));
+        return {
+          elapsedMinutes,
+          rawRemainingMinutes,
+          remainingMinutes,
+          boosterMinutes,
+          ready: rawRemainingMinutes <= 0.0001,
+          // 0이 된 뒤에도 원래 예상 완료시각을 유지해야 실제 수확시각과의 오차를 계산할 수 있습니다.
+          predictedAt: at + rawRemainingMinutes * 60000
+        };
+      }
+
+      function anchorCard(card, at = Date.now()) {
+        const snapshot = currentSnapshot(card, at);
+        card.remainingAtAnchor = snapshot.remainingMinutes;
+        card.boosterAtAnchor = snapshot.boosterMinutes;
+        card.anchorAt = at;
+        return snapshot;
+      }
+
+      function createCard({ type, memo, baseMinutes, initialBoost = true, createdAt = Date.now() }) {
+        const maxBooster = baseMinutes / 12;
+        const correctionMinutes = getCalibration(type, baseMinutes);
+        const initialRemaining = Math.max(0.1, baseMinutes - (initialBoost ? maxBooster : 0) + correctionMinutes);
+        return {
+          id: makeId(),
+          type,
+          memo: memo.trim(),
+          baseMinutes,
+          maxBooster,
+          initialBoost,
+          correctionApplied: correctionMinutes,
+          manualAdjustment: 0,
+          remainingAtAnchor: initialRemaining,
+          boosterAtAnchor: 0,
+          anchorAt: createdAt,
+          createdAt,
+          updatedAt: createdAt
+        };
+      }
+
+      function formatCountdown(minutes) {
+        const totalSeconds = Math.max(0, Math.ceil(minutes * 60));
+        const hours = Math.floor(totalSeconds / 3600);
+        const mins = Math.floor((totalSeconds % 3600) / 60);
+        const secs = totalSeconds % 60;
+        return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+      }
+
+      function formatDuration(minutes) {
+        const sign = minutes < 0 ? '-' : '';
+        const abs = Math.abs(minutes);
+        const hours = Math.floor(abs / 60);
+        const mins = Math.round(abs % 60);
+        if (hours && mins) return `${sign}${hours}시간 ${mins}분`;
+        if (hours) return `${sign}${hours}시간`;
+        return `${sign}${mins}분`;
+      }
+
+      function formatClock(timestamp) {
+        return new Intl.DateTimeFormat('ko-KR', {
+          month: 'numeric', day: 'numeric', weekday: 'short',
+          hour: '2-digit', minute: '2-digit'
+        }).format(new Date(timestamp));
+      }
+
+      function formatOffset(minutes) {
+        const rounded = Math.round(minutes * 10) / 10;
+        if (Math.abs(rounded) < 0.05) return '오차 없음';
+        return rounded > 0 ? `+${rounded}분 늦음` : `${rounded}분 빠름`;
+      }
+
+      function toDatetimeLocal(timestamp) {
+        const date = new Date(timestamp);
+        const pad = value => String(value).padStart(2, '0');
+        return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+      }
+
+      function parseDatetimeLocal(value) {
+        const timestamp = new Date(value).getTime();
+        return Number.isFinite(timestamp) ? timestamp : Date.now();
+      }
+
+      function escapeHtml(value) {
+        return String(value)
+          .replaceAll('&', '&amp;')
+          .replaceAll('<', '&lt;')
+          .replaceAll('>', '&gt;')
+          .replaceAll('"', '&quot;')
+          .replaceAll("'", '&#039;');
+      }
+
+      function typeLabel(type) {
+        return type === 'ranch' ? '목장' : '농장';
+      }
+
+      function actionLabel(type) {
+        return type === 'ranch' ? '사료주기' : '물주기';
+      }
+
+      function showToast(message) {
+        clearTimeout(toastTimer);
+        elements.toast.textContent = message;
+        elements.toast.classList.add('show');
+        toastTimer = setTimeout(() => elements.toast.classList.remove('show'), 1800);
+      }
+
+      function openOverlay(id) {
+        const overlay = document.getElementById(id);
+        if (!overlay) return;
+        overlay.classList.add('open');
+        document.body.style.overflow = 'hidden';
+      }
+
+      function closeOverlay(id) {
+        const overlay = document.getElementById(id);
+        if (!overlay) return;
+        overlay.classList.remove('open');
+        if (!document.querySelector('.overlay.open')) document.body.style.overflow = '';
+      }
+
+      function render() {
+        const now = Date.now();
+        const sorted = [...state.cards].sort((a, b) => b.createdAt - a.createdAt);
+        const snapshots = sorted.map(card => ({ card, snapshot: currentSnapshot(card, now) }));
+        const readyCount = snapshots.filter(item => item.snapshot.ready).length;
+
+        elements.activeCount.textContent = String(sorted.length);
+        elements.readyCount.textContent = String(readyCount);
+
+        if (sorted.length === 0) {
+          elements.timerList.innerHTML = `
+            <div class="empty">
+              <div class="empty-icon">🌱</div>
+              <strong>등록된 타이머가 없습니다</strong>
+              <p>아래 타이머 등록 버튼을 눌러<br>농장이나 목장 수확시간을 시작하세요.</p>
+            </div>`;
+          lastReadyIds = new Set();
+          return;
+        }
+
+        elements.timerList.innerHTML = snapshots.map(({ card, snapshot }) => {
+          const totalStart = Math.max(0.1, card.baseMinutes - (card.initialBoost ? card.maxBooster : 0) + (card.correctionApplied || 0));
+          const progress = Math.max(0, Math.min(100, (1 - snapshot.remainingMinutes / totalStart) * 100));
+          const boosterText = formatDuration(snapshot.boosterMinutes);
+          const isRanch = card.type === 'ranch';
+          const memo = card.memo ? escapeHtml(card.memo) : '메모 없음';
+          return `
+            <article class="timer-card ${snapshot.ready ? 'ready' : ''}" data-card-id="${card.id}" style="--card-accent:${isRanch ? '#c58b18' : '#238b57'}">
+              <div class="card-head">
+                <div class="card-title-wrap">
+                  <span class="type-badge ${isRanch ? 'ranch' : ''}">${isRanch ? '🐮' : '🌾'} ${typeLabel(card.type)}</span>
+                  <div class="memo ${card.memo ? '' : 'placeholder'}">${memo}</div>
+                </div>
+                <button class="more-button" data-action="menu" aria-label="타이머 관리">⋯</button>
+              </div>
+
+              <div class="countdown ${snapshot.ready ? 'ready-text' : ''}">${snapshot.ready ? '수확 가능!' : formatCountdown(snapshot.remainingMinutes)}</div>
+              <div class="end-time">${snapshot.ready ? '완료 버튼을 눌러 인게임 오차를 기록하세요.' : `예상 수확 ${formatClock(snapshot.predictedAt)}`}</div>
+
+              <div class="progress-track"><div class="progress-bar" style="width:${progress.toFixed(2)}%"></div></div>
+
+              <div class="booster-panel">
+                <div>
+                  <div class="booster-label">현재 ${actionLabel(card.type)} 단축 가능</div>
+                  <div class="booster-value">${boosterText} / 최대 ${formatDuration(card.maxBooster)}</div>
+                </div>
+                <button class="boost-button" data-action="boost" ${snapshot.ready || snapshot.boosterMinutes < 0.016 ? 'disabled' : ''}>${actionLabel(card.type)}</button>
+              </div>
+
+              <div class="card-actions">
+                <button class="complete-button ${snapshot.ready ? 'ready' : ''}" data-action="complete">${snapshot.ready ? '인게임 수확 완료' : '완료·오차 수정'}</button>
+              </div>
+            </article>`;
+        }).join('');
+
+        const currentReadyIds = new Set(snapshots.filter(item => item.snapshot.ready).map(item => item.card.id));
+        for (const id of currentReadyIds) {
+          if (!lastReadyIds.has(id)) {
+            if (navigator.vibrate) navigator.vibrate([120, 80, 120]);
+            showToast('수확 가능한 타이머가 있습니다.');
+            break;
+          }
+        }
+        lastReadyIds = currentReadyIds;
+      }
+
+      function resetAddForm() {
+        editingCardId = null;
+        selectedType = 'farm';
+        elements.memoInput.value = '';
+        elements.hoursInput.value = '6';
+        elements.minutesInput.value = '0';
+        elements.initialBoostToggle.checked = true;
+        $('#addTitle').textContent = '새 타이머';
+        elements.saveTimerBtn.textContent = '등록하기';
+        updateTypeSegment();
+        updateQuickSelection();
+        updateCalibrationBanner();
+      }
+
+      function updateTypeSegment() {
+        $$('#typeSegment button').forEach(button => {
+          button.classList.toggle('active', button.dataset.type === selectedType);
+        });
+        elements.initialActionTitle.textContent = selectedType === 'ranch'
+          ? '등록 직전에 사료를 줬어요'
+          : '등록 직전에 물을 줬어요';
+      }
+
+      function getFormMinutes() {
+        const hours = Math.max(0, Number(elements.hoursInput.value || 0));
+        const minutes = Math.max(0, Math.min(59, Number(elements.minutesInput.value || 0)));
+        return hours * 60 + minutes;
+      }
+
+      function updateQuickSelection() {
+        const minutes = getFormMinutes();
+        $$('.quick-time').forEach(button => {
+          button.classList.toggle('active', minutes === Number(button.dataset.hours) * 60);
+        });
+      }
+
+      function updateCalibrationBanner() {
+        const baseMinutes = getFormMinutes();
+        const calibration = getCalibration(selectedType, baseMinutes);
+        if (baseMinutes > 0 && Math.abs(calibration) >= 0.05) {
+          elements.calibrationBanner.classList.add('show');
+          elements.calibrationBanner.textContent = `이 시간대의 저장된 보정값 ${formatOffset(calibration)}을 새 타이머에 자동 반영합니다.`;
+        } else {
+          elements.calibrationBanner.classList.remove('show');
+          elements.calibrationBanner.textContent = '';
+        }
+      }
+
+      function saveTimerFromForm() {
+        const baseMinutes = getFormMinutes();
+        if (baseMinutes < 1) {
+          showToast('수확시간을 1분 이상 입력해주세요.');
+          return;
+        }
+
+        if (editingCardId) {
+          const card = state.cards.find(item => item.id === editingCardId);
+          if (!card) return;
+          const now = Date.now();
+          anchorCard(card, now);
+          const oldBase = card.baseMinutes;
+          const ratio = oldBase > 0 ? card.remainingAtAnchor / oldBase : 1;
+          card.type = selectedType;
+          card.memo = elements.memoInput.value.trim();
+          card.baseMinutes = baseMinutes;
+          card.maxBooster = baseMinutes / 12;
+          card.initialBoost = elements.initialBoostToggle.checked;
+          card.remainingAtAnchor = Math.max(0, baseMinutes * ratio);
+          card.boosterAtAnchor = Math.min(card.boosterAtAnchor, card.maxBooster);
+          card.correctionApplied = getCalibration(selectedType, baseMinutes);
+          card.manualAdjustment = 0;
+          card.updatedAt = now;
+          showToast('타이머를 수정했습니다.');
+        } else {
+          const card = createCard({
+            type: selectedType,
+            memo: elements.memoInput.value,
+            baseMinutes,
+            initialBoost: elements.initialBoostToggle.checked
+          });
+          state.cards.unshift(card);
+          showToast('타이머를 등록했습니다.');
+        }
+
+        saveState();
+        closeOverlay('addOverlay');
+        render();
+      }
+
+      function useBooster(cardId) {
+        const card = state.cards.find(item => item.id === cardId);
+        if (!card) return;
+        const now = Date.now();
+        const snapshot = anchorCard(card, now);
+        if (snapshot.ready || snapshot.boosterMinutes < 0.016) return;
+        const used = snapshot.boosterMinutes;
+        card.remainingAtAnchor = Math.max(0, snapshot.remainingMinutes - used);
+        card.boosterAtAnchor = 0;
+        card.anchorAt = now;
+        card.updatedAt = now;
+        saveState();
+        render();
+        showToast(`${actionLabel(card.type)}로 ${formatDuration(used)} 단축했습니다.`);
+      }
+
+      function openCompletion(cardId) {
+        const card = state.cards.find(item => item.id === cardId);
+        if (!card) return;
+        completingCardId = cardId;
+        const snapshot = currentSnapshot(card);
+        elements.completeMemo.textContent = `${typeLabel(card.type)} · ${card.memo || '메모 없음'} · 기본 ${formatDuration(card.baseMinutes)}`;
+        elements.actualHarvestInput.value = toDatetimeLocal(Date.now());
+        elements.saveCorrectionToggle.checked = true;
+        elements.restartToggle.checked = true;
+        updateCorrectionPreview();
+        openOverlay('completeOverlay');
+      }
+
+      function updateCorrectionPreview() {
+        const card = state.cards.find(item => item.id === completingCardId);
+        if (!card) return;
+        const now = Date.now();
+        const snapshot = currentSnapshot(card, now);
+        const actualAt = parseDatetimeLocal(elements.actualHarvestInput.value);
+        const offsetMinutes = (actualAt - snapshot.predictedAt) / 60000;
+        const learnedCorrection = (card.correctionApplied || 0) + (card.manualAdjustment || 0) + offsetMinutes;
+        const rounded = Math.round(offsetMinutes * 10) / 10;
+
+        elements.correctionResult.classList.remove('plus', 'minus');
+        if (rounded > 0.05) elements.correctionResult.classList.add('plus');
+        if (rounded < -0.05) elements.correctionResult.classList.add('minus');
+
+        if (Math.abs(rounded) < 0.05) {
+          elements.correctionResult.textContent = '예측과 실제 시각이 같습니다.';
+          elements.correctionDetail.textContent = `현재까지 반영된 값을 포함해 이번 학습 보정값 ${formatOffset(learnedCorrection)}이 기록됩니다.`;
+        } else if (rounded > 0) {
+          elements.correctionResult.textContent = `인게임 수확이 앱보다 ${Math.abs(rounded)}분 늦습니다.`;
+          elements.correctionDetail.textContent = `기존 반영값까지 합친 이번 학습 보정값은 ${formatOffset(learnedCorrection)}입니다. 다음 같은 타이머에는 최근 값의 평균을 적용합니다.`;
+        } else {
+          elements.correctionResult.textContent = `인게임 수확이 앱보다 ${Math.abs(rounded)}분 빠릅니다.`;
+          elements.correctionDetail.textContent = `기존 반영값까지 합친 이번 학습 보정값은 ${formatOffset(learnedCorrection)}입니다. 다음 같은 타이머에는 최근 값의 평균을 적용합니다.`;
+        }
+      }
+
+      function finishTimer({ saveCorrection }) {
+        const cardIndex = state.cards.findIndex(item => item.id === completingCardId);
+        if (cardIndex < 0) return;
+        const card = state.cards[cardIndex];
+        const snapshot = currentSnapshot(card);
+        const actualAt = parseDatetimeLocal(elements.actualHarvestInput.value);
+        const offsetMinutes = (actualAt - snapshot.predictedAt) / 60000;
+        const learnedCorrection = (card.correctionApplied || 0) + (card.manualAdjustment || 0) + offsetMinutes;
+        const shouldRestart = elements.restartToggle.checked;
+
+        if (saveCorrection && elements.saveCorrectionToggle.checked) {
+          saveCalibrationSample(card.type, card.baseMinutes, learnedCorrection);
+        }
+
+        state.cards.splice(cardIndex, 1);
+
+        if (shouldRestart) {
+          const restarted = createCard({
+            type: card.type,
+            memo: card.memo,
+            baseMinutes: card.baseMinutes,
+            initialBoost: card.initialBoost,
+            createdAt: Date.now()
+          });
+          state.cards.unshift(restarted);
+        }
+
+        saveState();
+        closeOverlay('completeOverlay');
+        completingCardId = null;
+        render();
+
+        if (saveCorrection && elements.saveCorrectionToggle.checked) {
+          showToast(`완료했습니다. 오차 ${formatOffset(offsetMinutes)} 저장.`);
+        } else {
+          showToast('완료 처리했습니다.');
+        }
+      }
+
+      function openMenu(cardId) {
+        const card = state.cards.find(item => item.id === cardId);
+        if (!card) return;
+        activeCardId = cardId;
+        elements.menuTitle.textContent = card.memo || `${typeLabel(card.type)} 타이머`;
+        openOverlay('menuOverlay');
+      }
+
+      function adjustCurrentTimer(minutes) {
+        const card = state.cards.find(item => item.id === activeCardId);
+        if (!card || !Number.isFinite(minutes) || minutes === 0) return;
+        const now = Date.now();
+        const snapshot = anchorCard(card, now);
+        card.remainingAtAnchor = Math.max(0, snapshot.remainingMinutes + minutes);
+        card.manualAdjustment = (card.manualAdjustment || 0) + minutes;
+        card.anchorAt = now;
+        card.updatedAt = now;
+        saveState();
+        closeOverlay('adjustOverlay');
+        render();
+        showToast(`남은 시간을 ${minutes > 0 ? '+' : ''}${minutes}분 조정했습니다.`);
+      }
+
+      function editActiveCard() {
+        const card = state.cards.find(item => item.id === activeCardId);
+        if (!card) return;
+        editingCardId = card.id;
+        selectedType = card.type;
+        elements.memoInput.value = card.memo;
+        elements.hoursInput.value = String(Math.floor(card.baseMinutes / 60));
+        elements.minutesInput.value = String(Math.round(card.baseMinutes % 60));
+        elements.initialBoostToggle.checked = card.initialBoost;
+        $('#addTitle').textContent = '타이머 수정';
+        elements.saveTimerBtn.textContent = '수정 저장';
+        updateTypeSegment();
+        updateQuickSelection();
+        updateCalibrationBanner();
+        closeOverlay('menuOverlay');
+        openOverlay('addOverlay');
+      }
+
+      function deleteActiveCard() {
+        const card = state.cards.find(item => item.id === activeCardId);
+        if (!card) return;
+        if (!confirm(`“${card.memo || typeLabel(card.type)}” 타이머를 삭제할까요?`)) return;
+        state.cards = state.cards.filter(item => item.id !== activeCardId);
+        saveState();
+        closeOverlay('menuOverlay');
+        render();
+        showToast('타이머를 삭제했습니다.');
+      }
+
+      function renderCalibrationSettings() {
+        const entries = Object.entries(state.calibrations)
+          .filter(([, item]) => item && Array.isArray(item.samples) && item.samples.length)
+          .sort(([, a], [, b]) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+        if (entries.length === 0) {
+          elements.calibrationList.innerHTML = '<div class="field-hint">아직 저장된 완료 오차가 없습니다.</div>';
+          return;
+        }
+
+        elements.calibrationList.innerHTML = entries.map(([key, item]) => {
+          const average = getCalibration(item.type, item.baseMinutes);
+          return `
+            <div class="calibration-item">
+              <div>
+                <div class="calibration-name">${item.type === 'ranch' ? '🐮 목장' : '🌾 농장'} · ${formatDuration(item.baseMinutes)}</div>
+                <div class="calibration-meta">평균 ${formatOffset(average)} · 최근 ${item.samples.length}회</div>
+              </div>
+              <button class="tiny-button" data-reset-calibration="${escapeHtml(key)}">초기화</button>
+            </div>`;
+        }).join('');
+      }
+
+      elements.addBtn.addEventListener('click', () => {
+        resetAddForm();
+        openOverlay('addOverlay');
+      });
+
+      elements.settingsBtn.addEventListener('click', () => {
+        renderCalibrationSettings();
+        openOverlay('settingsOverlay');
+      });
+
+      elements.typeSegment.addEventListener('click', event => {
+        const button = event.target.closest('[data-type]');
+        if (!button) return;
+        selectedType = button.dataset.type;
+        updateTypeSegment();
+        updateCalibrationBanner();
+      });
+
+      $('#quickGrid').addEventListener('click', event => {
+        const button = event.target.closest('[data-hours]');
+        if (!button) return;
+        elements.hoursInput.value = button.dataset.hours;
+        elements.minutesInput.value = '0';
+        updateQuickSelection();
+        updateCalibrationBanner();
+      });
+
+      [elements.hoursInput, elements.minutesInput].forEach(input => {
+        input.addEventListener('input', () => {
+          updateQuickSelection();
+          updateCalibrationBanner();
+        });
+      });
+
+      elements.saveTimerBtn.addEventListener('click', saveTimerFromForm);
+
+      elements.timerList.addEventListener('click', event => {
+        const actionButton = event.target.closest('[data-action]');
+        const cardElement = event.target.closest('[data-card-id]');
+        if (!actionButton || !cardElement) return;
+        const cardId = cardElement.dataset.cardId;
+        const action = actionButton.dataset.action;
+        if (action === 'boost') useBooster(cardId);
+        if (action === 'complete') openCompletion(cardId);
+        if (action === 'menu') openMenu(cardId);
+      });
+
+      elements.actualHarvestInput.addEventListener('input', updateCorrectionPreview);
+      elements.finishTimerBtn.addEventListener('click', () => finishTimer({ saveCorrection: true }));
+      elements.finishWithoutCorrectionBtn.addEventListener('click', () => finishTimer({ saveCorrection: false }));
+
+      elements.adjustBtn.addEventListener('click', () => {
+        elements.customAdjustInput.value = '';
+        closeOverlay('menuOverlay');
+        openOverlay('adjustOverlay');
+      });
+      elements.editBtn.addEventListener('click', editActiveCard);
+      elements.deleteBtn.addEventListener('click', deleteActiveCard);
+
+      $$('.adjust-button').forEach(button => {
+        button.addEventListener('click', () => adjustCurrentTimer(Number(button.dataset.adjust)));
+      });
+      elements.applyCustomAdjustBtn.addEventListener('click', () => {
+        const value = Number(elements.customAdjustInput.value);
+        if (!Number.isFinite(value) || value === 0) {
+          showToast('0이 아닌 분 단위를 입력해주세요.');
+          return;
+        }
+        adjustCurrentTimer(value);
+      });
+
+      elements.calibrationList.addEventListener('click', event => {
+        const button = event.target.closest('[data-reset-calibration]');
+        if (!button) return;
+        delete state.calibrations[button.dataset.resetCalibration];
+        saveState();
+        renderCalibrationSettings();
+        showToast('보정값을 초기화했습니다.');
+      });
+
+      elements.clearAllBtn.addEventListener('click', () => {
+        if (!confirm('모든 타이머와 완료 오차 보정값을 전부 삭제할까요?')) return;
+        state = defaultState();
+        saveState();
+        closeOverlay('settingsOverlay');
+        render();
+        showToast('모든 데이터를 초기화했습니다.');
+      });
+
+      $$('[data-close]').forEach(button => {
+        button.addEventListener('click', () => closeOverlay(button.dataset.close));
+      });
+
+      $$('.overlay').forEach(overlay => {
+        overlay.addEventListener('click', event => {
+          if (event.target === overlay) closeOverlay(overlay.id);
+        });
+      });
+
+      document.addEventListener('keydown', event => {
+        if (event.key !== 'Escape') return;
+        const openOverlays = $$('.overlay.open');
+        if (openOverlays.length) closeOverlay(openOverlays.at(-1).id);
+      });
+
+      document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) render();
+      });
+
+      window.addEventListener('storage', event => {
+        if (event.key !== STORAGE_KEY) return;
+        state = loadState();
+        render();
+      });
+
+      setInterval(render, 1000);
+      render();
+    })();
+  </script>
+</body>
+</html>
