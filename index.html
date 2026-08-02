@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="러쉬팜 타이머" />
-  <title>러쉬팜 타이머 v4.2</title>
+  <title>러쉬팜 타이머 v4.3</title>
   <style>
     :root {
       color-scheme: light;
@@ -72,7 +72,7 @@
   </svg>
   <main class="app">
     <header class="topbar">
-      <div class="brand-row"><div class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#i-wheat"></use></svg></div><div><h1>러쉬팜 타이머</h1><p class="subtitle">막타 최대충전 정렬 안내 · v4.2</p></div></div>
+      <div class="brand-row"><div class="brand-icon"><svg class="icon" aria-hidden="true"><use href="#i-wheat"></use></svg></div><div><h1>러쉬팜 타이머</h1><p class="subtitle">막타 최대충전 정렬 안내 · v4.3</p></div></div>
       <button class="icon-button" id="settingsBtn" aria-label="설정"><svg class="icon" aria-hidden="true"><use href="#i-settings"></use></svg></button>
     </header>
     <section class="summary"><article class="summary-card"><div class="summary-label">진행 중</div><div class="summary-value"><span id="activeCount">0</span><small>개</small></div></article><article class="summary-card"><div class="summary-label">수확 가능</div><div class="summary-value"><span id="readyCount">0</span><small>개</small></div></article><article class="summary-card"><div class="summary-label">서리위험</div><div class="summary-value"><span id="riskCount">0</span><small>개</small></div></article></section>
@@ -211,6 +211,51 @@
     const fin=directFinish(st),finalAt=now+(offset+fin.minutes)*60000;steps.push({kind:'final',at:finalAt,wait:fin.minutes,used:fin.state.booster,window:fin.window,natural:fin.natural,text:fin.natural?'추가 사용 없이 수확':`${action} ${dur(fin.window)} 막타`,sub:fin.natural?'현재 표시 시간이 끝나면 수확':`${action}를 한 번 누르면 바로 수확`});return{steps,finalAt,finalWindow:fin.window,finalBoost:fin.state.booster,totalMinutes:offset+fin.minutes,maxFinal:fin.window+0.5>=s.maxBooster,natural:fin.natural,target,reason:'계획 단계가 많아 마지막 구간만 표시합니다.',exactAligned:false};
   }
 
+
+  function simulateOrderedPlan(card,s,now,ordered,variant){
+    const action=actionLabel(card.type),target=s.maxSustain+s.maxBooster,steps=[];let st={...s},offset=0;
+    for(const source of ordered){
+      const desired=Math.max(st.minBooster,Math.min(st.maxBooster,Number(source.used)||0));
+      if(st.booster>desired+.5)return null;
+      const wait=timeToCharge(st,desired);if(!Number.isFinite(wait)||wait>st.sustain+EPS)return null;
+      const f=futureStatus(st,wait),used=f.booster,after=f.after;
+      if(!f.ready||f.golden||after<=st.dangerCycle+EPS)return null;
+      const isMax=used+.5>=st.maxBooster,kind=isMax?'cycle':'align',at=now+(offset+wait)*60000;
+      steps.push({kind,at,wait,used,after,text:isMax?`최대충전 ${action} ${dur(used)} 사용`:`정렬용 ${action} ${dur(used)} 먼저 사용`,sub:isMax?`사용 후 수확까지 ${dur(after)} · 다음 행동까지 길게 대기`:`사용 후 수확까지 ${dur(after)} · 이후 최대충전 간격으로 진행`});
+      offset+=wait;st=resetAfterAction(st,after);
+    }
+    const fin=directFinish(st),finalAt=now+(offset+fin.minutes)*60000,window=fin.window;
+    steps.push({kind:'final',at:finalAt,wait:fin.minutes,used:fin.state.booster,after:0,window,natural:fin.natural,text:fin.natural?'추가 사용 없이 수확':`${action} ${dur(window)} 최대 막타`,sub:fin.natural?'현재 표시 시간이 끝나면 수확':`${action}를 한 번 누르면 바로 수확`});
+    return{steps,finalAt,finalWindow:window,finalBoost:fin.state.booster,totalMinutes:offset+fin.minutes,maxFinal:window+.5>=s.maxBooster,natural:fin.natural,target,reason:variant==='small-first'?'정렬용 최소량을 먼저 사용해 이후 행동 간격을 길게 배치합니다.':'최대충전을 먼저 사용하고 뒤에서 정렬량을 맞춥니다.',exactAligned:true,variant};
+  }
+
+  function smallFirstPlan(card,s,now,maxPlan){
+    if(!maxPlan||maxPlan.natural)return null;
+    const middle=maxPlan.steps.filter(x=>x.kind!=='final');
+    if(middle.length<2)return null;
+    const ordered=[...middle].sort((a,b)=>(a.used||0)-(b.used||0));
+    const before=middle.map(x=>Math.round((x.used||0)*10)).join(','),after=ordered.map(x=>Math.round((x.used||0)*10)).join(',');
+    if(before===after)return null;
+    const plan=simulateOrderedPlan(card,s,now,ordered,'small-first');
+    if(!plan)return null;
+    const sameActions=plan.steps.filter(x=>x.kind!=='final').length===middle.length;
+    const finishGap=Math.abs(plan.finalAt-maxPlan.finalAt)/60000,windowGap=Math.abs((plan.finalWindow||0)-(maxPlan.finalWindow||0));
+    if(!sameActions||finishGap>1.1||windowGap>1.1)return null;
+    return plan;
+  }
+
+  function planSignature(plan){return(plan?.steps||[]).filter(x=>x.kind!=='final').map(x=>Math.round((x.used||0)*10)).join('>')}
+  function plansDistinct(a,b){return Boolean(a&&b&&planSignature(a)!==planSignature(b))}
+  function choosePreferredPlan(smallPlan,maxPlan){
+    if(!smallPlan)return maxPlan;
+    const smallActions=smallPlan.steps.filter(x=>x.kind!=='final').length,maxActions=maxPlan.steps.filter(x=>x.kind!=='final').length;
+    if(smallPlan.finalAt>maxPlan.finalAt+60000)return maxPlan;
+    if((smallPlan.finalWindow||0)+1<(maxPlan.finalWindow||0))return maxPlan;
+    if(smallActions>maxActions)return maxPlan;
+    return smallPlan;
+  }
+  function preferredPlan(card,s,now){const maxPlan=lastHitPlan(card,s,now),smallPlan=smallFirstPlan(card,s,now,maxPlan);return choosePreferredPlan(smallPlan,maxPlan)}
+
   function actionStatus(card,s){
     const action=actionLabel(card.type),after=s.remaining-s.booster;
     if(s.done||s.golden)return{risk:false,mode:'complete',button:'수확 완료',buttonClass:'gold'};
@@ -237,7 +282,7 @@
   function clockToMinutes(v){const n=normalizeClockValue(v);if(!n)return NaN;const [h,m]=n.split(':').map(Number);return h*60+m}
   function sleepRangeLabel(p){if(!p)return'';const overnight=clockToMinutes(p.start)>clockToMinutes(p.end);return`${p.start} ~ ${overnight?'다음 날 ':''}${p.end}`}
   function sleepIntervalContaining(ts,preset){if(!preset)return null;const startMin=clockToMinutes(preset.start),endMin=clockToMinutes(preset.end);if(!Number.isFinite(startMin)||!Number.isFinite(endMin)||startMin===endMin)return null;const d=new Date(ts),day=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();if(startMin<endMin){const start=day+startMin*60000,end=day+endMin*60000;return ts>=start&&ts<end?{start,end}:null}const startToday=day+startMin*60000,endTomorrow=day+86400000+endMin*60000;if(ts>=startToday&&ts<endTomorrow)return{start:startToday,end:endTomorrow};const startYesterday=day-86400000+startMin*60000,endToday=day+endMin*60000;return ts>=startYesterday&&ts<endToday?{start:startYesterday,end:endToday}:null}
-  function sleepPlanBase(card,s,now){const plan=lastHitPlan(card,s,now);if(s.done&&!plan.steps.length)return{...plan,steps:[{kind:'final',at:now,wait:0,used:0,after:0,window:0,natural:true,text:'기상 후 바로 수확',sub:'수면 중 수확 가능 상태가 되어 있습니다.'}],finalAt:now,natural:true};return plan}
+  function sleepPlanBase(card,s,now){const plan=preferredPlan(card,s,now);if(s.done&&!plan.steps.length)return{...plan,steps:[{kind:'final',at:now,wait:0,used:0,after:0,window:0,natural:true,text:'기상 후 바로 수확',sub:'수면 중 수확 가능 상태가 되어 있습니다.'}],finalAt:now,natural:true};return plan}
   function sleepActionCount(plan){return(plan?.steps||[]).filter(x=>x.kind!=='final').length}
   function betterSleepCandidate(a,b){if(!a)return b;if(!b)return a;const diff=a.finalAt-b.finalAt;if(Math.abs(diff)>30000)return diff<0?a:b;if(Math.abs((a.finalWindow||0)-(b.finalWindow||0))>.5)return(a.finalWindow||0)>(b.finalWindow||0)?a:b;return sleepActionCount(a)<=sleepActionCount(b)?a:b}
   function sleepAwareCandidate(card,s,now,preset,depth=0){
@@ -294,7 +339,7 @@
   }
 
   function targetPlan(card,s,now){
-    if(!card.targetAt)return null;const target=Number(card.targetAt),plan=lastHitPlan(card,s,now),diff=(plan.finalAt-target)/60000;
+    if(!card.targetAt)return null;const target=Number(card.targetAt),plan=preferredPlan(card,s,now),diff=(plan.finalAt-target)/60000;
     if(target<=now)return{ok:false,title:'목표시간이 지났습니다',detail:'목표 수확시간을 다시 설정하세요.',steps:[]};
     if(Math.abs(diff)<=1)return{ok:true,title:'막타 계획과 목표시간이 거의 같습니다',detail:`현재 막타 계획은 ${clock(plan.finalAt)}입니다.`,steps:[]};
     return{ok:false,title:diff>0?'현재 계획이 목표보다 늦습니다':'현재 계획이 목표보다 빠릅니다',detail:`막타 정렬 기준 예상은 ${clock(plan.finalAt)}이며 목표와 약 ${dur(Math.abs(diff))} 차이입니다.`,steps:[]};
@@ -315,24 +360,34 @@
 
   function render(){
     const opened=new Set($$('details.card-accordion[open]',el.list).map(d=>Number(d.dataset.detailsId))),sleepOpen=Boolean(el.sleepHub.querySelector('details.sleep-accordion[open]')),sleepEditing=el.sleepHub.contains(document.activeElement)&&document.activeElement.matches('input,textarea,select'),now=Date.now(),cards=[...state.cards].sort((a,b)=>b.createdAt-a.createdAt),items=cards.map(card=>{
-      const s=snapshot(card,now),status=actionStatus(card,s),basePlan=lastHitPlan(card,s,now),sleep=sleepPlanInfo(card,s,basePlan,now),plan=sleep.mode==='collision'&&sleep.plan?sleep.plan:basePlan,guide=planGuidance(card,s,plan,now);
-      return{card,s,status,basePlan,plan,guide,sleep};
+      const s=snapshot(card,now),status=actionStatus(card,s),maxBasePlan=lastHitPlan(card,s,now),smallBasePlan=smallFirstPlan(card,s,now,maxBasePlan),preferredBasePlan=choosePreferredPlan(smallBasePlan,maxBasePlan),sleep=sleepPlanInfo(card,s,preferredBasePlan,now),plan=sleep.mode==='collision'&&sleep.plan?sleep.plan:preferredBasePlan,guide=planGuidance(card,s,plan,now);
+      return{card,s,status,maxBasePlan,smallBasePlan,preferredBasePlan,plan,guide,sleep};
     });
     el.active.textContent=items.filter(x=>!x.s.done).length;el.ready.textContent=items.filter(x=>x.s.done||x.s.golden).length;el.risk.textContent=items.filter(x=>x.status.risk).length;
     if(!sleepEditing){el.sleepHub.innerHTML=globalSleepAccordionHtml(items,now);if(sleepOpen){const d=el.sleepHub.querySelector('details.sleep-accordion');if(d)d.open=true}}
     if(!items.length){el.list.innerHTML=`<div class="empty"><div class="empty-icon">${icon('sprout')}</div><strong>등록된 타이머가 없습니다</strong><p>게임에 보이는 남은 수확시간과<br>수분·사료 유지시간을 입력해보세요.</p></div>`;return}
-    el.list.innerHTML=items.map(({card,s,status,plan,guide,sleep})=>{
-      const p=params(card.baseMinutes),start=Math.max(.1,card.initialRemaining||card.baseMinutes),progress=Math.max(0,Math.min(100,(1-s.remaining/start)*100)),target=targetPlan(card,s,now),action=actionLabel(card.type),sus=sustainLabel(card.type),minIn=readyIn(s),shortage=s.sustain<=EPS,next=plan.steps[0],firstApplied=(card.firstBoostApplied??card.startedNew)&&!(card.actionCount>0),sleepApplied=sleep.mode==='collision',accordionPreview=`${sleepApplied?'수면 반영 · ':''}막타 ${plan.natural?'사용 없음':dur(plan.finalWindow)} · ${clock(plan.finalAt)} · 현재 ${action} ${dur(s.booster)}`;
-      const rows=plan.steps.slice(0,9).map((x,i)=>`<div class="plan-row ${i===0?'next':''}"><div class="plan-time">${clock(x.at)}</div><div class="plan-copy"><div class="plan-text">${esc(x.text)}</div>${x.sub?`<div class="plan-sub">${esc(x.sub)}</div>`:''}</div></div>`).join('');
-      const nextValue=!next?'확인 필요':next.kind==='final'?(next.natural?'그대로 기다림':clock(next.at)):(Math.max(0,(next.at-now)/60000)<.5?'지금':clock(next.at)),nextAmount=!next||next.natural?'없음':dur(next.kind==='final'?plan.finalWindow:next.used),targetBox=target?`<div class="target-box"><div class="target-label">${icon('target')}목표 수확 · ${clock(card.targetAt)}</div><div class="target-title ${target.ok?'target-good':'target-bad'}">${esc(target.title)}</div><div class="target-detail">${esc(target.detail)}</div></div>`:'';
+    el.list.innerHTML=items.map(({card,s,status,maxBasePlan,smallBasePlan,preferredBasePlan,plan,guide,sleep})=>{
+      const p=params(card.baseMinutes),start=Math.max(.1,card.initialRemaining||card.baseMinutes),progress=Math.max(0,Math.min(100,(1-s.remaining/start)*100)),target=targetPlan(card,s,now),action=actionLabel(card.type),sus=sustainLabel(card.type),minIn=readyIn(s),shortage=s.sustain<=EPS,next=plan.steps[0],firstApplied=(card.firstBoostApplied??card.startedNew)&&!(card.actionCount>0),sleepApplied=sleep.mode==='collision',hasTwo=!sleepApplied&&plansDistinct(smallBasePlan,maxBasePlan),accordionPreview=`${sleepApplied?'수면 반영 · ':hasTwo?'두 가지 계획 · ':''}막타 ${plan.natural?'사용 없음':dur(plan.finalWindow)} · ${clock(plan.finalAt)} · 현재 ${action} ${dur(s.booster)}`;
+      const rowsFor=selected=>selected.steps.slice(0,9).map((x,i)=>`<div class="plan-row ${i===0?'next':''}"><div class="plan-time">${clock(x.at)}</div><div class="plan-copy"><div class="plan-text">${esc(x.text)}</div>${x.sub?`<div class="plan-sub">${esc(x.sub)}</div>`:''}</div></div>`).join('');
+      const rows=rowsFor(plan),nextValue=!next?'확인 필요':next.kind==='final'?(next.natural?'그대로 기다림':clock(next.at)):(Math.max(0,(next.at-now)/60000)<.5?'지금':clock(next.at)),nextAmount=!next||next.natural?'없음':dur(next.kind==='final'?plan.finalWindow:next.used),targetBox=target?`<div class="target-box"><div class="target-label">${icon('target')}목표 수확 · ${clock(card.targetAt)}</div><div class="target-title ${target.ok?'target-good':'target-bad'}">${esc(target.title)}</div><div class="target-detail">${esc(target.detail)}</div></div>`:'';
       const nextSub=next?.kind==='sleep-pre'?'잠들기 전 행동':next?.kind==='align'?'사용 후 막타 기준 정렬':next?.kind==='cycle'?'최대충전 중간 사용':next?.kind==='final'?'마지막 수확 단계':'상태 확인';
+      let planSections;
+      if(hasTwo){
+        const smallPreferred=preferredBasePlan===smallBasePlan,smallRows=rowsFor(smallBasePlan),maxRows=rowsFor(maxBasePlan),sameFinish=Math.abs(smallBasePlan.finalAt-maxBasePlan.finalAt)<=60000,sameWindow=Math.abs((smallBasePlan.finalWindow||0)-(maxBasePlan.finalWindow||0))<=1,smallCount=smallBasePlan.steps.filter(x=>x.kind!=='final').length,maxCount=maxBasePlan.steps.filter(x=>x.kind!=='final').length;
+        const compare= sameFinish&&sameWindow&&smallCount===maxCount?`두 방법 모두 ${clock(smallBasePlan.finalAt)}에 ${dur(smallBasePlan.finalWindow)} 막타로 수확합니다. 차이는 첫 사용 시각과 다음 행동 간격입니다.`:`방법마다 수확시각이나 막타 여유가 조금 다르므로 편한 일정을 선택하세요.`;
+        const smallSection=`<div class="detail-section plan-method ${smallPreferred?'recommended':''}"><div class="detail-section-head"><div class="detail-section-title method-title">${smallPreferred?'<span class="method-chip">추천</span>':''}방법 1 · 최소량 먼저</div><div class="detail-section-meta">${clock(smallBasePlan.finalAt)} · ${smallCount}회 중간 사용</div></div><div class="plan-note">정렬에 필요한 작은 ${action}를 먼저 사용하고, 이후 최대충전 간격을 길게 가져갑니다.</div><div class="plan-body">${smallRows}</div><div class="plan-result">마지막 막타 ${dur(smallBasePlan.finalWindow)} · ${smallBasePlan.maxFinal?'최대충전 확보':'현재 가능한 막타'}</div></div>`;
+        const maxSection=`<div class="detail-section plan-method ${smallPreferred?'':'recommended'}"><div class="detail-section-head"><div class="detail-section-title method-title">${smallPreferred?'':'<span class="method-chip">추천</span>'}방법 2 · 최대충전 먼저</div><div class="detail-section-meta">${clock(maxBasePlan.finalAt)} · ${maxCount}회 중간 사용</div></div><div class="plan-note">첫 행동을 최대충전까지 미룰 수 있지만, 뒤의 정렬용 소량 사용이 가까이 붙을 수 있습니다.</div><div class="plan-body">${maxRows}</div><div class="plan-result">마지막 막타 ${dur(maxBasePlan.finalWindow)} · ${maxBasePlan.maxFinal?'최대충전 확보':'현재 가능한 막타'}</div></div>`;
+        planSections=`<div class="plan-note">${compare}</div>${smallSection}${maxSection}`;
+      }else{
+        planSections=`<div class="detail-section plan-method recommended"><div class="detail-section-head"><div class="detail-section-title method-title"><span class="method-chip">추천</span>${sleepApplied?'수면시간 반영 막타 계획':'막타 최대충전 정렬 계획'}</div><div class="detail-section-meta">${clock(plan.finalAt)} · ${plan.steps.filter(x=>x.kind!=='final').length}회 중간 사용</div></div><div class="plan-note">${sleepApplied?'선택한 수면유형과 겹치는 행동을 피하면서 ':''}최종 수확시각을 늦추지 않는 범위에서 마지막 ${action}를 크게 모으고, 필요한 중간 사용만 안내합니다.${plan.reason?` ${esc(plan.reason)}`:''}</div><div class="plan-body">${rows}</div><div class="plan-result">마지막 막타 ${plan.natural?'사용 없음':dur(plan.finalWindow)} · ${plan.maxFinal?'최대충전 확보':'현재 상태에서 가능한 막타'} · 예상 오차는 입력 당시 초에 따라 약 1분 내외</div></div>`;
+      }
       return`<article class="timer-card ${status.risk?'risk':''} ${s.golden||s.done?'golden':''}" data-id="${card.id}"><div class="card-head"><div><span class="type-badge ${card.type==='ranch'?'ranch':''}">${typeIcon(card.type)}${typeLabel(card.type)} · ${dur(card.baseMinutes)}</span><div class="memo ${card.memo?'':'placeholder'}">${esc(card.memo||'메모 없음')}</div></div><button class="more-button" data-act="menu" aria-label="타이머 관리">${icon('ellipsis')}</button></div><div class="countdown ${s.done?'done':''}">${s.done?'수확 가능':countdown(s.remaining)}</div><div class="end-time">현재 표시 기준 · <strong>${clock(s.predictedAt)}</strong></div><div class="progress-track"><div class="progress-bar" style="width:${progress}%"></div></div>
-      <div class="guide ${guide.kind}"><div class="guide-kicker">${esc(guide.kicker)}</div><div class="guide-title">${esc(guide.title)}</div><div class="guide-detail">${guide.detail}</div></div>
+      <div class="guide ${guide.kind}"><div class="guide-kicker">${esc(guide.kicker)}</div><div class="guide-title">${esc(guide.title)}</div><div class="guide-detail">${guide.detail}${hasTwo?`<div class="uncertainty-note">같은 수확시각의 ‘최대충전 먼저’ 계획도 상세에서 함께 확인할 수 있습니다.</div>`:''}</div></div>
       <div class="metrics"><div class="metric"><div class="metric-label">다음 행동</div><div class="metric-value">${esc(nextValue)}</div><div class="metric-sub">${nextSub}</div></div><div class="metric"><div class="metric-label">그때 ${action}</div><div class="metric-value">${esc(nextAmount)}</div><div class="metric-sub">현재 충전 ${dur(s.booster)} / ${dur(p.maxBooster)}</div></div><div class="metric"><div class="metric-label">마지막 막타 여유</div><div class="metric-value">${plan.natural?'사용 없음':dur(plan.finalWindow)}</div><div class="metric-sub">최대 ${dur(p.maxBooster)}</div></div><div class="metric"><div class="metric-label">계획 수확</div><div class="metric-value">${clock(plan.finalAt).replace(/^(오늘|내일|모레) /,'')}</div><div class="metric-sub">${sleepApplied?'수면시간 반영 · ':''}현재 표시보다 ${dur(Math.max(0,s.remaining-plan.totalMinutes))} 단축 예상</div></div></div>
       ${targetBox}
       <details class="card-accordion" data-details-id="${card.id}"><summary><div class="accordion-copy"><div class="accordion-title">${icon('timer')}막타 계획 상세</div><div class="accordion-preview">${esc(accordionPreview)}</div></div><span class="accordion-chevron">${icon('chevron-down')}</span></summary><div class="accordion-body"><div class="accordion-divider"></div>
       ${firstApplied?`<div class="start-applied"><div class="start-applied-icon">${icon(card.type==='ranch'?'milk':'droplet')}</div><div><strong>시작 즉시 첫 ${action} 적용됨</strong><span>${dur(p.maxBooster)} 즉시 단축 후 계산 중입니다.</span></div></div>`:''}
-      <div class="detail-section plan-method recommended"><div class="detail-section-head"><div class="detail-section-title method-title"><span class="method-chip">추천</span>${sleepApplied?'수면시간 반영 막타 계획':'막타 최대충전 정렬 계획'}</div><div class="detail-section-meta">${clock(plan.finalAt)} · ${plan.steps.filter(x=>x.kind!=='final').length}회 중간 사용</div></div><div class="plan-note">${sleepApplied?'선택한 수면유형과 겹치는 행동을 피하면서 ':''}최종 수확시각을 늦추지 않는 범위에서 마지막 ${action}를 크게 모으고, 필요한 중간 사용만 안내합니다.${plan.reason?` ${esc(plan.reason)}`:''}</div><div class="plan-body">${rows}</div><div class="plan-result">마지막 막타 ${plan.natural?'사용 없음':dur(plan.finalWindow)} · ${plan.maxFinal?'최대충전 확보':'현재 상태에서 가능한 막타'} · 예상 오차는 입력 당시 초에 따라 약 1분 내외</div></div>
+      ${planSections}
       <div class="detail-section"><div class="detail-section-head"><div class="detail-section-title">계산 기준</div><div class="detail-section-meta">${typeLabel(card.type)} ${dur(card.baseMinutes)}</div></div><div class="basis-grid"><div class="basis-item"><div class="basis-label">최대 ${sus}</div><div class="basis-value">${dur(p.maxSustain)}</div></div><div class="basis-item"><div class="basis-label">최대 ${action}</div><div class="basis-value">${dur(p.maxBooster)}</div></div><div class="basis-item"><div class="basis-label">막타 정렬 기준</div><div class="basis-value">${dur(p.maxSustain+p.maxBooster)}</div></div><div class="basis-item"><div class="basis-label">최소 사용량</div><div class="basis-value">${dur(p.minBooster)}</div></div></div><div class="uncertainty-note">현재 ${sus} ${shortage?'부족 상태':dur(s.sustain)} · ${action} ${dur(s.booster)}${!s.ready&&Number.isFinite(minIn)?` · ${dur(minIn)} 뒤 최소 사용 가능`:''}</div></div>
       </div></details><button class="action-button ${status.buttonClass}" data-act="primary" ${status.mode==='disabled'?'disabled':''}>${esc(status.button)}</button></article>`;
     }).join('');opened.forEach(id=>{const d=el.list.querySelector(`details.card-accordion[data-details-id="${id}"]`);if(d)d.open=true});
